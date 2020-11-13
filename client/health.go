@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"ehang.io/nps/lib/conn"
+	"ehang.io/nps/lib/file"
+	"ehang.io/nps/lib/sheap"
 	"github.com/astaxie/beego/logs"
-	"github.com/cnlh/nps/lib/conn"
-	"github.com/cnlh/nps/lib/file"
-	"github.com/cnlh/nps/lib/sheap"
 	"github.com/pkg/errors"
 )
 
@@ -71,7 +71,11 @@ func check(t *file.Health) {
 	var rs *http.Response
 	for _, v := range arr {
 		if t.HealthCheckType == "tcp" {
-			_, err = net.DialTimeout("tcp", v, time.Duration(t.HealthCheckTimeout)*time.Second)
+			var c net.Conn
+			c, err = net.DialTimeout("tcp", v, time.Duration(t.HealthCheckTimeout)*time.Second)
+			if err == nil {
+				c.Close()
+			}
 		} else {
 			client := &http.Client{}
 			client.Timeout = time.Duration(t.HealthCheckTimeout) * time.Second

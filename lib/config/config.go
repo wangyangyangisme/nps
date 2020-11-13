@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cnlh/nps/lib/common"
-	"github.com/cnlh/nps/lib/file"
+	"ehang.io/nps/lib/common"
+	"ehang.io/nps/lib/file"
 )
 
 type CommonConfig struct {
@@ -17,6 +17,7 @@ type CommonConfig struct {
 	AutoReconnection bool
 	ProxyUrl         string
 	Client           *file.Client
+	DisconnectTime   int
 }
 
 type LocalServer struct {
@@ -145,6 +146,10 @@ func dealCommon(s string) *CommonConfig {
 			c.Client.MaxConn = common.GetIntNoErrByStr(item[1])
 		case "remark":
 			c.Client.Remark = item[1]
+		case "pprof_addr":
+			common.InitPProfFromArg(item[1])
+		case "disconnect_timeout":
+			c.DisconnectTime = common.GetIntNoErrByStr(item[1])
 		}
 	}
 	return c
@@ -239,10 +244,37 @@ func dealTunnel(s string) *file.Tunnel {
 			t.LocalPath = item[1]
 		case "strip_pre":
 			t.StripPre = item[1]
+		case "multi_account":
+			t.MultiAccount = &file.MultiAccount{}
+			if common.FileExists(item[1]) {
+				if b, err := common.ReadAllFromFile(item[1]); err != nil {
+					panic(err)
+				} else {
+					if content, err := common.ParseStr(string(b)); err != nil {
+						panic(err)
+					} else {
+						t.MultiAccount.AccountMap = dealMultiUser(content)
+					}
+				}
+			}
 		}
 	}
 	return t
 
+}
+
+func dealMultiUser(s string) map[string]string {
+	multiUserMap := make(map[string]string)
+	for _, v := range splitStr(s) {
+		item := strings.Split(v, "=")
+		if len(item) == 0 {
+			continue
+		} else if len(item) == 1 {
+			item = append(item, "")
+		}
+		multiUserMap[strings.TrimSpace(item[0])] = item[1]
+	}
+	return multiUserMap
 }
 
 func delLocalService(s string) *LocalServer {
